@@ -1,0 +1,91 @@
+﻿<reference path="knockback-full-stack.js" />
+<reference path="http://code.jquery.com/jquery-latest.min.js" />
+<html>
+<head>
+    <title></title>
+</head>
+<body>
+    <table>
+        <tbody data-bind="foreach: board ">
+            <tr data-bind="foreach: $data, click: $parent.clickMe">
+                <td data-bind="text: $data ">
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+<script type="text/javascript" src="knockback-full-stack.js"></script>
+<script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+<script type="text/javascript">
+    $(function () {
+
+        //model
+        var GameModel = Backbone.Model.extend({ urlRoot: '/game' });
+
+        //viewmodel
+        var GameViewModel = function (game) {
+
+            //            this.board = kb.observable(game, ko.observableArray([
+            //                             [ko.observable(0), ko.observable(0), ko.observable(0)],
+            //                             [ko.observable(0), ko.observable(0), ko.observable(0)],
+            //                             [ko.observable(0), ko.observable(0), ko.observable(0)]
+            //                         ]));
+
+            this.board = kb.observable(
+                {
+                    'game': game,
+                    'board': [
+                        [ko.observable(0), ko.observable(0), ko.observable(0)],
+                        [ko.observable(0), ko.observable(0), ko.observable(0)],
+                        [ko.observable(0), ko.observable(0), ko.observable(0)]
+                    ]
+                }, { read_only: false });
+        };
+
+        //        //model
+        //        var PersonsModel = Backbone.Collection.extend({ model: PersonModel, url: '/api/persons' });
+
+        //        //viewmodel
+        //        var PersonsViewModel = function (persons) {
+        //            this.persons = kb.collectionObservable(persons)
+        //        };
+
+        var model = new GameModel({ id: 1 });
+        var gameViewModel = new GameViewModel(model);
+        //                model.fetch().done(function () {
+        //                    //binding
+        //                    ko.applyBindings(gameViewModel);//, $('#kb_observable')[0]);
+        //                });
+        ko.applyBindings(gameViewModel);
+
+        //                var personsModel = new PersonsModel();
+        //                var personsViewModel = new PersonsViewModel(personsModel);
+        //                personsModel.fetch().done(function () {
+        //                    //binding
+        //                    ko.applyBindings(personsViewModel, $('#kb_collection_observable')[0]);
+        //                });
+
+        //        var ViewModel = function () {
+        //            var self = this;
+        //            self.clickMe = function (data, event) {
+        //                var target;
+        //                if (event.target) target = event.target;
+        //                else if (event.srcElement) target = event.srcElement;
+
+        //                if (target.nodeType == 3) // defeat Safari bug
+        //                    target = target.parentNode;
+        //                self.board()[target.parentElement.rowIndex][target.cellIndex](1);
+        //                $.post("game", { board: self.board, Title: title, Content: body, Tags: dtoTags }, refresh);
+        //            };
+        //            self.board = ko.observableArray([
+        //                             [ko.observable(0), ko.observable(0), ko.observable(0)],
+        //                             [ko.observable(0), ko.observable(0), ko.observable(0)],
+        //                             [ko.observable(0), ko.observable(0), ko.observable(0)]
+        //                         ]);
+
+        //        };
+
+        //        ko.applyBindings(new ViewModel());
+    });
+</script>
+</html>

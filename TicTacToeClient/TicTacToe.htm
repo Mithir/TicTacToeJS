@@ -1,0 +1,197 @@
+﻿/// <reference path="knockback-full-stack.js" />
+/// <reference path="JsonServiceClient.js" />
+/// <reference path="http://code.jquery.com/jquery-latest.min.js" />
+<html >
+<head>
+    <title>TicTacToe</title>
+</head>
+<body>
+<input type="radio" name="Mark" id="Mark_X" value="X" />
+<input type="radio" name="Mark" id="Mark_O" value="O" />
+
+</body>
+<script type="text/javascript" src ="knockback-full-stack.js"></script>
+<script type="text/javascript" src ="JsonServiceClient.js"></script>
+<script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+<script type="text/javascript">
+
+/*
+ * A complete tic-tac-toe widget, using JQuery.  Just include this 
+ * script in a browser page and play.  A tic-tac-toe game will be 
+ * included as a child element of the element with id "tictactoe".  
+ * If the page has no such element, it will just be added at the end 
+ * of the body.
+ */
+$(function () {
+
+    var squares = [], 
+        SIZE = 3,
+        EMPTY = "&nbsp;",
+        score,
+        moves,
+        turn = "X",
+
+    /*
+     * To determine a win condition, each square is "tagged" from left
+     * to right, top to bottom, with successive powers of 2.  Each cell
+     * thus represents an individual bit in a 9-bit string, and a
+     * player's squares at any given time can be represented as a
+     * unique 9-bit value. A winner can thus be easily determined by
+     * checking whether the player's current 9 bits have covered any
+     * of the eight "three-in-a-row" combinations.
+     *
+     *     273                 84
+     *        \               /
+     *          1 |   2 |   4  = 7
+     *       -----+-----+-----
+     *          8 |  16 |  32  = 56
+     *       -----+-----+-----
+     *         64 | 128 | 256  = 448
+     *       =================
+     *         73   146   292
+     *
+     */
+    wins = [7, 56, 448, 73, 146, 292, 273, 84],
+
+    /*
+     * Clears the score and move count, erases the board, and makes it
+     * X's turn.
+     */
+    startNewGame = function () {
+        turn = "X";
+        score = {"X": 0, "O": 0};
+        moves = 0;
+        squares.forEach(function (square) {square.html(EMPTY);});
+    },
+    getMark = function()
+    {
+        if(document.getElementById('Mark_X').checked) {
+            return 'X';
+        }else if(document.getElementById('Mark_O').checked) {
+            return 'Circle';
+            }
+    }
+    /*
+     * Returns whether the given score is a winning score.
+     */
+    win = function (score) {
+        for (var i = 0; i < wins.length; i += 1) {
+            if ((wins[i] & score) === wins[i]) {
+                return true;
+            }
+        }
+        return false;
+    },
+    /*
+     * Sets the clicked-on square to the current player's mark,
+     * then checks for a win or cats game.  Also changes the
+     * current player.
+     */
+    set = function () {
+        if ($(this).html() !== EMPTY) {return; }
+        
+        $.post("http://localhost:1337/game",{Mark:getMark(),PlayerId:1,Position:$(this).context.positionA}, DrawBoard);
+    },
+
+    setExisting = function () {
+        if ($(this).html() !== EMPTY) {return; }
+        
+        $.ajax({
+    url: "http://localhost:1337/game",
+    type: 'PUT',
+    contentType: 'application/json',
+    data: JSON.stringify({ page: { my_data: 1 }),
+    dataType: 'json'
+});
+
+        $.put("http://localhost:1337/game", DrawBoard);
+    },
+    DrawBoard = function (gameResponse) {
+        var positionB = 1;
+        var representation = gameResponse.Board.Representation;
+        var board = $("<table border=1 cellspacing=0>"), indicator = 1;
+        for (var i = 0; i < SIZE; i += 1) {
+            var row = $("<tr>");
+            board.append(row);
+            for (var j = 0; j < SIZE; j += 1) {
+                var cell = $("<td height=50 width=50 align=center valign=center></td>");
+                cell[0].indicator = indicator;
+                cell[0].positionA = positionB;
+                cell.click(setExisting);
+                if (representation[i][j] == "Circle")
+                {
+                    cell.html("O");
+                }
+                else
+                {
+                     if (representation[i][j] == "X")
+                     {   
+                        cell.html("X");
+                     }
+                     else
+                     {
+                        cell.html(EMPTY);
+                     }
+                }
+                row.append(cell);
+                squares.push(cell);
+                indicator += indicator;
+                positionB++;
+            }
+        }
+        board.id = gameResponse.GameId;
+        var div = jQuery('<div/>', {
+            id: 'gameResponse.GameId',
+            text: 'Game:'+ gameResponse.GameId + ' <br>'
+        });
+        div.append(board);
+        // Attach under tictactoe if present, otherwise to body.
+        if (document.getElementById(gameResponse.GameId) ==null){
+            $(document.body).append(div);
+        }
+        else{
+         $(document.getElementById(gameResponse.GameId)).html(div);
+         }
+        //startNewGame();
+    };
+    /*
+     * Creates and attaches the DOM elements for the board as an
+     * HTML table, assigns the indicators for each cell, and starts
+     * a new game.
+     */
+    play = function () {
+        
+        var positionB = 1;
+        var board = $("<table border=1 cellspacing=0>"), indicator = 1;
+        for (var i = 0; i < SIZE; i += 1) {
+            var row = $("<tr>");
+            board.append(row);
+            for (var j = 0; j < SIZE; j += 1) {
+                var cell = $("<td height=50 width=50 align=center valign=center></td>");
+                cell[0].indicator = indicator;
+                cell[0].positionA = positionB;
+                cell.click(set);
+                row.append(cell);
+                squares.push(cell);
+                indicator += indicator;
+                positionB++;
+            }
+        }
+
+
+        // Attach under tictactoe if present, otherwise to body.
+        var div = jQuery('<div/>', {
+            id: 'NewGame',
+            text: 'Start a New Game'
+        });
+        div.append(board);
+        $(document.getElementById("tictactoe") || document.body).append(div);
+        startNewGame();
+    };
+    
+    play();
+});
+
+</script> 
+
+</html>

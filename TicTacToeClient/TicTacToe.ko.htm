@@ -1,0 +1,297 @@
+﻿<reference path="http://knockoutjs.com/downloads/knockout-2.2.1.js" />
+<reference path="JsonServiceClient.js" />
+<reference path="http://code.jquery.com/jquery-latest.min.js" />
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="main.css">
+    <title></title>
+</head>
+<body>
+    <div id="myDiv">
+        <input type="text" data-bind="value:playerId" />
+        <input type="text" data-bind="value:mark" />
+        <button id="pause">
+            start</button>
+        <button id="allGames">
+            All Games</button>
+        <p>
+            Existing Games</p>
+        <div id="ExistingGames">
+        </div>
+        <table>
+            <tr>
+                <td>
+                    <p>
+                        Create a new Game</p>
+                    <br />
+                    <table>
+                        <tbody data-bind="foreach: board ">
+                            <tr data-bind="foreach: $data, click: $parent.clickMe">
+                                <td data-bind="text: $data ">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+                <td>
+                    <p>
+                        Existing Games2</p>
+                    <br />
+                    <table id="ExistingGames2">
+                        <tbody>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+<script type="text/javascript" src="http://knockoutjs.com/downloads/knockout-2.2.1.js"></script>
+<script type="text/javascript" src="JsonServiceClient.js"></script>
+<script src="http://code.jquery.com/jquery-latest.js" type="text/javascript"></script>
+<script type="text/javascript">
+    $(function () {
+
+
+        var NewGameDTO = function (playerId, position) {
+            this.PlayerId = playerId;
+            this.Position = position;
+        }
+        var NewMoveDTO = function (playerId, guid, position) {
+            this.PlayerId = playerId;
+            this.GameId = guid;
+            this.Position = position;
+        }
+
+        function createBoardTable(tableData, currentPlayerId) {
+            var table = createTable(tableData);
+            for (var i = 0, row; row = table.rows[i]; i++) {
+                for (var j = 0, col; col = row.cells[j]; j++) {
+                    if (col.innerHTML == '0') {
+                        col.innerHTML = '';
+                        continue;
+                    }
+                    if (col.innerHTML == currentPlayerId) {
+                        col.className = 'X-marker';
+                        col.innerHTML = 'X';
+                    }
+                    else {
+                        col.className = 'O-marker';
+                        col.innerHTML = 'O';
+                    }
+                }
+            }
+            return table;
+
+        }
+
+        function listToMatrix(list, elementsPerSubArray) {
+            var matrix = [], i, k;
+
+            for (i = 0, k = -1; i < list.length; i++) {
+                if (i % elementsPerSubArray === 0) {
+                    k++;
+                    matrix[k] = [];
+                }
+
+                matrix[k].push(list[i]);
+            }
+
+            return matrix;
+        }
+
+        function createObjectTable(tableData) {
+
+            var table = $("<table/>");
+            var tableBody = $("<tbody/>");
+
+            tableData.forEach(function (rowData) {
+                var row = $('<tr/>');
+
+                rowData.forEach(function (cellData) {
+                    var cell = $('<td/>');
+                    cell.append(cellData);
+                    row.append(cell);
+                });
+
+                tableBody.append(row);
+            });
+
+            table.append(tableBody);
+            return table;
+        }
+
+
+        function createTable(tableData) {
+            var table = document.createElement('table'), tableBody = document.createElement('tbody');
+
+            tableData.forEach(function (rowData) {
+                var row = document.createElement('tr');
+
+                rowData.forEach(function (cellData) {
+                    var cell = document.createElement('td');
+                    //cell.appendChild(document.createTextNode(cellData));
+                    cell.innerHTML = cellData;
+                    row.appendChild(cell);
+                });
+
+                tableBody.appendChild(row);
+            });
+
+            table.appendChild(tableBody);
+            //document.body.appendChild(table);
+            return table;
+        }
+
+        var ViewModel = function () {
+            $("#pause").click((function () {
+                var interId = null;
+                return function (e) {
+                    if (interId) {
+                        $(this).text("start");
+                        clearInterval(interId);
+                        interId = null;
+                    } else {
+                        $(this).text("pause");
+                        interId = setInterval(self.getOpenGames, 2000);
+                    }
+                };
+            } ()));
+
+
+
+            var self = this;
+            self.Games;
+
+            self.getOpenGames = function () {
+                $.ajax({
+                    type: "Get",
+                    url: "http://localhost:1337/game",
+                    success: self.writeGames,
+                    error: self.HandleError
+                });
+            }
+            self.writeGames = function (data) {
+                self.Games = data.Games;
+                var existing = $("#ExistingGames");
+                existing.empty();
+                var tablesArray = new Array();
+
+                for (index = 0; index < self.Games.length; ++index) {
+                    tablesArray.push(self.getBoardTable(self.Games[index].Board.representation, self.Games[index].Id));
+
+                    //                    existing
+                    //                    .append($(createBoardTable(self.Games[index].Board.representation, self.playerId)).attr('id', self.Games[index].Id)
+                    //                    .on("click", "td", { Guid: self.Games[index].Id }, self.DoNewMove))
+                    //                    .append('<br/>')
+                    //                    .append('<div id="message" />');
+                }
+
+                existing.append($(createObjectTable(listToMatrix(tablesArray, 4))));
+            }
+            self.getBoardTable = function (board, guid) {
+                var divResult = $("<div/>");
+                divResult
+                .append($(createBoardTable(board, self.playerId)).attr('id', guid)
+                .on("click", "td", { Guid: guid }, self.DoNewMove))
+                .append('<br/>')
+                .append('<div id="message" />');
+
+                return divResult;
+            }
+
+            self.DoNewMove = function (event) {
+                var target;
+                if (event.target) target = event.target;
+                else if (event.srcElement) target = event.srcElement;
+
+                if (target.nodeType == 3) // defeat Safari bug
+                    target = target.parentNode;
+                $.ajax({
+                    type: "PUT",
+                    url: "http://localhost:1337/game",
+                    data: new NewMoveDTO(self.playerId, event.data.Guid, target.parentElement.rowIndex * 3 + target.cellIndex + 1),
+                    success: function (data) {
+                        self.refresh(data, event.data.Guid);
+                    },
+                    error: function (xhr, textStatus, errorThrown) {
+                        self.HandleError(xhr, textStatus, errorThrown, event.data.Guid);
+                    }
+                });
+            };
+
+            self.clickMe = function (data, event) {
+                var target;
+                if (event.target) target = event.target;
+                else if (event.srcElement) target = event.srcElement;
+
+                if (target.nodeType == 3) // defeat Safari bug
+                    target = target.parentNode;
+
+                $.ajax({
+                    type: "POST",
+                    url: "http://localhost:1337/game",
+                    data: new NewGameDTO(self.playerId, target.parentElement.rowIndex * 3 + target.cellIndex + 1),
+                    success: self.refresh,
+                    error: self.HandleError
+                });
+            };
+
+            self.refresh = function (data, guid) {
+                var tableDiv = $('#' + guid).parent();
+                tableDiv.find('#message').text('OK...Now refresh!');
+
+                tableDiv.replaceWith(self.getBoardTable(data.Board.representation, guid));
+            }
+            self.HandleError = function (xhr, textStatus, errorThrown, guid) {
+                $('#' + guid).parent().find('#message').text(JSON.parse(xhr.responseText).ResponseStatus.Message);
+            }
+            self.board = ko.observableArray([
+                             [ko.observable(0), ko.observable(0), ko.observable(0)],
+                             [ko.observable(0), ko.observable(0), ko.observable(0)],
+                             [ko.observable(0), ko.observable(0), ko.observable(0)]
+                         ]);
+
+            $("#allGames").click(self.getOpenGames);
+
+            self.playerId = 1;
+            self.mark = "X";
+
+        };
+
+        ko.applyBindings(new ViewModel());
+    });
+    function roughSizeOfObject(object) {
+
+        var objectList = [];
+        var stack = [object];
+        var bytes = 0;
+
+        while (stack.length) {
+            var value = stack.pop();
+
+            if (typeof value === 'boolean') {
+                bytes += 4;
+            }
+            else if (typeof value === 'string') {
+                bytes += value.length * 2;
+            }
+            else if (typeof value === 'number') {
+                bytes += 8;
+            }
+            else if
+        (
+            typeof value === 'object'
+            && objectList.indexOf(value) === -1
+        ) {
+                objectList.push(value);
+
+                for (i in value) {
+                    stack.push(value[i]);
+                }
+            }
+        }
+        return bytes;
+    }
+</script>
+</html>
