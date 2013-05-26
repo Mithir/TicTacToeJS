@@ -62,9 +62,18 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Default.aspx" />
+    <Content Include="images\notice.png" />
     <Content Include="JsonServiceClient.js" />
     <Content Include="knockback-full-stack.js" />
     <Content Include="main.css" />
+    <Content Include="SignalR\jquery.signalR.core.js" />
+    <Content Include="SignalR\jquery.signalR.hubs.js" />
+    <Content Include="SignalR\jquery.signalR.transports.common.js" />
+    <Content Include="SignalR\jquery.signalR.transports.foreverFrame.js" />
+    <Content Include="SignalR\jquery.signalR.transports.longPolling.js" />
+    <Content Include="SignalR\jquery.signalR.transports.serverSentEvents.js" />
+    <Content Include="SignalR\jquery.signalR.transports.webSockets.js" />
+    <Content Include="SignalR\jquery.signalR.version.js" />
     <Content Include="TicTacToe.htm" />
     <Content Include="TicTacToe.kb.htm" />
     <Content Include="TicTacToe.ko.htm" />
@@ -77,12 +86,6 @@
     </Compile>
     <Compile Include="Default.aspx.designer.cs">
       <DependentUpon>Default.aspx</DependentUpon>
-    </Compile>
-    <Compile Include="main.css.cs">
-      <SubType>ASPXCodeBehind</SubType>
-    </Compile>
-    <Compile Include="main.css.designer.cs">
-      <DependentUpon>main.css.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

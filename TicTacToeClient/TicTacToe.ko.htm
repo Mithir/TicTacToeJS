@@ -1,57 +1,68 @@
-﻿<reference path="http://knockoutjs.com/downloads/knockout-2.2.1.js" />
+﻿<!--<reference path="http://knockoutjs.com/downloads/knockout-2.2.1.js" />
 <reference path="JsonServiceClient.js" />
-<reference path="http://code.jquery.com/jquery-latest.min.js" />
+<reference path="http://code.jquery.com/jquery-latest.min.js" />-->
+
 <html>
 <head>
-    <link rel="stylesheet" type="text/css" href="main.css">
+    <link rel="stylesheet" type="text/css" href="main.css"/>
     <title></title>
 </head>
 <body>
     <div id="myDiv">
         <input type="text" data-bind="value:playerId" />
-        <input type="text" data-bind="value:mark" />
-        <button id="pause">
+        <button id="pause" >
             start</button>
+         <button id="JoinRandomGame">
+            Join Random Game</button>
+        <button id="NewGame">
+            New Game</button>
         <button id="allGames">
             All Games</button>
+        <button id="GetUserGames">
+            Get User Games</button>
+        <button id="DeleteAll">
+            Delete All!</button>
+        <button id="SignToSignal">
+            Sign To Signal</button>
         <p>
             Existing Games</p>
         <div id="ExistingGames">
         </div>
-        <table>
-            <tr>
-                <td>
-                    <p>
-                        Create a new Game</p>
-                    <br />
-                    <table>
-                        <tbody data-bind="foreach: board ">
-                            <tr data-bind="foreach: $data, click: $parent.clickMe">
-                                <td data-bind="text: $data ">
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </td>
-                <td>
-                    <p>
-                        Existing Games2</p>
-                    <br />
-                    <table id="ExistingGames2">
-                        <tbody>
-                        </tbody>
-                    </table>
-                </td>
-            </tr>
-        </table>
+        <div id="boxes">
+            <div id="dialog2" class="window">
+                Create a new Game | <a href="#" class="close" />Close it</a>
+                <br />
+                <br />
+                <table>
+                    <tbody data-bind="foreach: board ">
+                        <tr data-bind="foreach: $data, click: $parent.clickMe">
+                            <td data-bind="text: $data ">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+    <!-- Mask to cover the whole screen -->
+  <div id="mask"></div>
 </body>
 <script type="text/javascript" src="http://knockoutjs.com/downloads/knockout-2.2.1.js"></script>
-<script type="text/javascript" src="JsonServiceClient.js"></script>
+<!--<script type="text/javascript" src="JsonServiceClient.js"></script>-->
 <script src="http://code.jquery.com/jquery-latest.js" type="text/javascript"></script>
+
+<script src="SignalR/jquery.signalR.core.js"></script>
+<script src="SignalR/jquery.signalR.hubs.js"></script>
+<script src="SignalR/jquery.signalR.version.js"></script>
+<script src="SignalR/jquery.signalR.transports.common.js"></script>
+<script src="SignalR/jquery.signalR.transports.longPolling.js"></script>
+<script src="SignalR/jquery.signalR.transports.foreverFrame.js"></script>
+<script src="SignalR/jquery.signalR.transports.serverSentEvents.js"></script>
+<script src="SignalR/jquery.signalR.transports.webSockets.js"></script>
+<script src="http://localhost:1338/signalr/hubs"></script>
+
 <script type="text/javascript">
     $(function () {
-
 
         var NewGameDTO = function (playerId, position) {
             this.PlayerId = playerId;
@@ -61,6 +72,10 @@
             this.PlayerId = playerId;
             this.GameId = guid;
             this.Position = position;
+        }
+
+        var joinGameDTO = function (userId) {
+            this.userId = userId;
         }
 
         function createBoardTable(tableData, currentPlayerId) {
@@ -153,7 +168,9 @@
                         interId = null;
                     } else {
                         $(this).text("pause");
-                        interId = setInterval(self.getOpenGames, 2000);
+                        //interId = setInterval(self.getOpenGames, 2000);
+                        interId = setInterval(self.GetUserGames, 2000);
+
                     }
                 };
             } ()));
@@ -162,6 +179,8 @@
 
             var self = this;
             self.Games;
+            self.playerId = 1;
+            self.mark = "X";
 
             self.getOpenGames = function () {
                 $.ajax({
@@ -235,7 +254,32 @@
                     success: self.refresh,
                     error: self.HandleError
                 });
+                closeMask();
             };
+            self.GetUserGames = function (event) {
+                $.ajax({
+                    type: "GET",
+                    url: "http://localhost:1337/user/" + self.playerId + "/games",
+                    success: self.writeGames,
+                    error: function () { alert('no new games...'); }
+                });
+            }
+
+            self.DeleteAll = function () {
+                $.ajax({
+                    type: "POST",
+                    url: "http://localhost:1337/deleteAll/"
+                });
+            }
+
+            self.joinRandomGame = function () {
+                $.ajax({
+                    type: "POST",
+                    url: "http://localhost:1337/game/join",
+                    data: new joinGameDTO(self.playerId)
+
+                });
+            }
 
             self.refresh = function (data, guid) {
                 var tableDiv = $('#' + guid).parent();
@@ -252,15 +296,107 @@
                              [ko.observable(0), ko.observable(0), ko.observable(0)]
                          ]);
 
+            var gameHubProxy = $.connection.gameHub;
+            gameHubProxy.client.refreshGame = function (game) {
+                console.log(game);
+                self.refresh(game, game.Id.replace(/-/g,''));
+            };
+
+            $.connection.hub.url = 'http://localhost:1338/signalr';
+            $.connection.hub.start({ transport: 'auto' }, function () {
+                console.log('connection started!');
+            });
+
+            $("#SignToSignal").click(function () {
+                gameHubProxy.server.send(self.playerId)
+            });
             $("#allGames").click(self.getOpenGames);
+            $("#DeleteAll").click(self.DeleteAll);
+            $("#JoinRandomGame").click(self.joinRandomGame);
 
-            self.playerId = 1;
-            self.mark = "X";
 
+
+            // $("#newGames").click({ userId: self.playerId }, self.GetUserGames);
+            $("#GetUserGames").click(self.GetUserGames);
+
+            $(":button").addClass("button blue");
         };
 
         ko.applyBindings(new ViewModel());
+
+        //select all the a tag with name equal to modal
+        $("#NewGame").click(function (e) {
+            //Cancel the link behavior
+            e.preventDefault();
+
+            //Get the A tag
+            //var id = $(this).attr('href');
+            var id = '#dialog2';
+
+            //Get the screen height and width
+            var maskHeight = $(document).height();
+            var maskWidth = $(window).width();
+
+            //Set heigth and width to mask to fill up the whole screen
+            $('#mask').css({ 'width': maskWidth, 'height': maskHeight });
+
+            //transition effect		
+            $('#mask').fadeIn(1000);
+            $('#mask').fadeTo("slow", 0.8);
+
+            //Get the window height and width
+            var winH = $(window).height();
+            var winW = $(window).width();
+
+            //Set the popup window to center
+            $(id).css('top', winH / 2 - $(id).height() / 2);
+            $(id).css('left', winW / 2 - $(id).width() / 2);
+
+            //transition effect
+            $(id).fadeIn(2000);
+
+        });
+        function closeMask() {
+            $('#mask').hide();
+            $('.window').hide();
+        }
+
+        //if close button is clicked
+        $('.window .close').click(function (e) {
+            //Cancel the link behavior
+            e.preventDefault();
+            closeMask();
+        });
+
+        //if mask is clicked
+        $('#mask').click(function () {
+            $(this).hide();
+            $('.window').hide();
+        });
+
+        $(window).resize(function () {
+
+            var box = $('#boxes .window');
+
+            //Get the screen height and width
+            var maskHeight = $(document).height();
+            var maskWidth = $(window).width();
+
+            //Set height and width to mask to fill up the whole screen
+            $('#mask').css({ 'width': maskWidth, 'height': maskHeight });
+
+            //Get the window height and width
+            var winH = $(window).height();
+            var winW = $(window).width();
+
+            //Set the popup window to center
+            box.css('top', winH / 2 - box.height() / 2);
+            box.css('left', winW / 2 - box.width() / 2);
+
+        });
     });
+
+
     function roughSizeOfObject(object) {
 
         var objectList = [];
